@@ -664,3 +664,196 @@ export default App;
 <img src=https://user-images.githubusercontent.com/86407453/133548949-598e6d2d-d716-40e6-b572-918a26d3e805.png>
 
 <img src=https://user-images.githubusercontent.com/86407453/133548977-be50a92f-f0f8-4616-bd61-a0ff7695ce8e.png>
+
+---
+### :blue_heart: UserDispatch Context 만들기
+
+:file_folder:index.js
+
+```
+import React from 'react';
+import ReactDOM from 'react-dom';
+import './index.css';
+import App from './App';
+import reportWebVitals from './reportWebVitals';
+
+ReactDOM.render(
+  <App />,
+  document.getElementById('root')
+);
+
+// If you want to start measuring performance in your app, pass a function
+// to log results (for example: reportWebVitals(console.log))
+// or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
+reportWebVitals();
+```
+
+:file_folder:UserList.js
+
+```
+import React, { useContext } from 'react';
+import { UserDispatch } from './App';
+
+const User = React.memo(function User({ user }) {
+    const { username, email, id, active } = user;
+    const dispatch = useContext(UserDispatch);
+    
+    useContext(() => {
+        console.log(user);
+    });
+
+    return (
+        <div>
+            <b
+                style={{
+                color: active ? 'green' : 'black',
+                cursor: 'pointer'
+            }}
+            onClick={() => dispatch({
+                type: 'TOGGLE_USER',
+                id
+            })}
+            >
+            {username}
+            </b> 
+            &nbsp;
+            <span>({email})</span>
+            <button onClick={() => dispatch({
+                type: 'REMOVE_USER',
+                id
+            })}>삭제</button>
+        </div>
+    );
+});
+
+function UserList({ users }) {
+    return (
+        <div>
+            {
+                users.map(
+                    (user) => (
+                    <User 
+                    user={user} 
+                    key={user.id}
+                    />
+                    )
+                )
+            }
+        </div>
+    );
+}
+
+export default React.memo(
+    UserList, (prevProps, nextProps) => nextProps.users === prevProps.users
+    );
+```
+
+:file_folder:App.js
+
+```
+import React, { useRef, useReducer, useMemo, useCallback, createContext } from 'react';
+import CreateUser from './CreateUser';
+import UserList from './UserList';
+import useInputs from './useInputs';
+
+function CountActiveUsers(users) {
+  console.log('활성 사용자 수를 세는중...');
+  return users.filter(user => user.active).length;
+}
+
+const initialState = {
+  users: [
+    {
+        id: 1,
+        username: 'seohee',
+        email: 'a67114585a@gmail.com',
+        active: true,
+    },
+    {
+        id: 2,
+        username: 'tester',
+        email: 'tester@example.com',
+        active: false,
+    },
+    {
+        id: 3,
+        username: 'liz',
+        email: 'liz@example.com',
+        active: false,
+    }
+]
+}
+
+function reducer(state, action) {
+  switch (action.type) {
+      case 'CREATE_USER':
+        return {
+          inputs: initialState.inputs,
+          users: state.users.concat(action.user)
+        }
+      case 'TOGGLE_USER':
+        return {
+          ...state,
+          users: state.users.map(user =>
+            user.id === action.id
+              ? { ...user, active: !user.active }
+              : user
+            )
+        };
+      case 'REMOVE_USER':
+        return {
+          ...state,
+          users: state.users.filter(user => user.id !== action.id)
+        }
+      default:
+        throw new Error('Unhandled action');
+  }
+}
+
+export const UserDispatch = createContext(null);
+
+function App() {
+  const [state, dispatch] = useReducer(reducer, initialState);
+  const [form, onChange, reset] = useInputs({
+    username: '',
+    email: '',
+  });
+  const { username, email } = form;
+  const nextId = useRef(4);
+  const { users } = state;
+
+  const onCreate = useCallback(() => {
+    dispatch({
+      type: 'CREATE_USER',
+      user: {
+        id: nextId.current,
+        username,
+        email,
+      }
+    });
+    nextId.current += 1;
+    reset();
+  }, [username, email, reset]);
+
+  const count = useMemo(() => CountActiveUsers(users), [users])
+
+  return (
+    <UserDispatch.Provider value={dispatch}>
+      <CreateUser 
+      username={username} 
+      email={email} 
+      onChange={onChange} 
+      onCreate={onCreate}
+      />
+      <UserList users={users} />
+      <div>활성 사용자 수 : {count}</div>
+    </UserDispatch.Provider>
+  )
+}
+
+export default App;
+```
+
+:mag:
+
+<img src=https://user-images.githubusercontent.com/86407453/133550330-f5b10c47-b004-4a37-afe5-afd8b92ecd37.png>
